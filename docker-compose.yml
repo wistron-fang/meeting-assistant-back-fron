@@ -1,0 +1,49 @@
+services:
+  # ==================== PostgreSQL 数据库 ====================
+  postgres:
+    image: postgres:15-alpine
+    container_name: meeting_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: meeting_assistant
+      TZ: Asia/Shanghai
+    ports:
+      - "5532:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meeting_network
+
+  # ==================== Redis 缓存 ====================
+  redis:
+    image: redis:7-alpine
+    container_name: meeting_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6479:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meeting_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  meeting_network:
+    driver: bridge

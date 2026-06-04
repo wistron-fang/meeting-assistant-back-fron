@@ -1,0 +1,94 @@
+/**
+ * Copyright © 2026 深圳市深维智见教育科技有限公司 版权所有
+ * 未经授权，禁止转售或仿制。
+ */
+
+$topbar-height: 112px;
+$gap: 8px;
+$radius: 8px;
+$shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+$sidebar-width: 94px;
+
+// 整体容器：每个块用 $gap 间距分隔，浅灰色底从间隙透出
+// height + overflow: hidden 让 body 不滚动，只内容卡片内部滚
+.base-layout {
+  height: 100vh;
+  overflow: hidden;
+  padding: $gap;
+  padding-left: $gap + $sidebar-width + $gap;
+  box-sizing: border-box;
+  background-color: #f4f6fa;
+}
+
+// 有顶部 logo 横条时：整体再下移
+.base-layout--with-topbar {
+  padding-top: $gap + $topbar-height + $gap;
+
+  .base-layout__sidebar {
+    top: $gap + $topbar-height + $gap;
+  }
+}
+
+.base-layout__topbar {
+  position: fixed;
+  z-index: 1001;
+  top: $gap;
+  left: $gap;
+  right: $gap;
+  height: $topbar-height;
+  background-color: #ffffff;
+  border-radius: $radius;
+  box-shadow: $shadow;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+
+  img {
+    height: 96px;
+    width: auto;
+    display: block;
+  }
+}
+
+.base-layout__sidebar {
+  position: fixed;
+  z-index: 1000;
+  left: $gap;
+  top: $gap;
+  bottom: $gap;
+  width: $sidebar-width;
+  background-color: #fbfbfb;
+  border-radius: $radius;
+  box-shadow: $shadow;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .base-layout__sidebar-main {
+    flex-grow: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 18px;
+  }
+}
+
+.base-layout__content {
+  height: calc(100vh - #{$gap * 2});
+  background-color: #ffffff;
+  border-radius: $radius;
+  box-shadow: $shadow;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.base-layout--with-topbar .base-layout__content {
+  height: calc(100vh - #{$gap * 3 + $topbar-height});
+}
+
+// 首页（flush 模式）：内容直接坐在 #f4f6fa 灰底上，去掉白卡片包裹
+.base-layout--flush .base-layout__content {
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}

@@ -1,0 +1,84 @@
+## 日常启动 (每次开发都做)
+
+###1、 起 docker (如果没在跑)，打开 Docker Desktop 在 Containers 页点启动。或者```powershell
+docker compose -f E:\meeting_minutes_assistant\docker-compose.yml up -d
+
+### 2、 起后端 (独立3个终端口)
+（1）后端（窗口 A，FastAPI）
+```powershell
+cd E:\meeting_minutes_assistant\backend\app
+.\.venv\Scripts\Activate.ps1  (激活)
+python app_main.py
+
+（2）worker（窗口 B，Celery worker）
+#cd E:\meeting_minutes_assistant\backend\app
+#.\.venv\Scripts\Activate.ps1
+#$env:PYTHONPATH = "E:\meeting_minutes_assistant\backend\app"
+#celery -A core.celery_app worker --loglevel=info --pool=solo
+
+替换成下面的
+cd E:\meeting_minutes_assistant\backend\app
+.\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "E:\meeting_minutes_assistant\backend\app"
+celery -A core.celery_app worker --loglevel=info --pool=solo
+
+（3）前端（窗口 C，前端）
+cd E:\meeting_minutes_assistant\frontend
+npm run dev
+
+ 打开浏览器访问 http://localhost:5273  ,登录后到 "会议纪要整理" 页。
+
+-----------------------------------------------------------------------------------------------------
+
+
+Login 页面：
+1、增加粤港澳大湾区研究院的字样。【done。登录页没做】
+2、注册增加邮箱验证？不然谁都能进来。
+3、纪要任务的上传时间有问题。使用北京时间。【done】
+4、前端会议纪要的输出只有md和pdf两个格式，需要增加Word版本，并支持下载。【done】
+5、字样调整【done】
+
+6、提交任务后启动太慢：Celery worker 启动时会广播找其他 worker 同步状态。你只有一个 worker，等了 60 秒超时才确认"独自一个"。跳过 mingle，省 60 秒（强烈推荐）【done】
+python run_worker.py（最终做法）
+cd E:\meeting_minutes_assistant\backend\app
+.\.venv\Scripts\Activate.ps1
+python run_worker.py
+
+7、如果上传或粘贴时，用户填写了会议标题，那么生成的报告、导出的文件名，都用改标题命名。如果没填会议标题，那就用生成的报告里的标题，作为任务名、导出的文件名。
+---功能点：任务完成后，前端的任务名支持编辑（编辑后，报告的标题和导出的文件名都不用随之修改，只修改前端展示）【暂不修改】
+
+8、加一个分页，每页展示10个记录。同时支持按标题搜索纪要任务。【done】
+9、加一个总体耗时。【done】
+10、增加研究院logo，首页取消下滑，页面固定【done】
+11、增加Word上传【done】
+12、保留 7 天后自动清理，没生效，且时区有问题。属于硬删除，删除后任务数量变少。先按硬删除修复，后续可以改成软删除（保留前端记录，但不可下载）【done】
+13、纪要处理事，不要只展示当前进展，把从一开始的所有日志都展示出来，就像你的思考过程也可以给用户看一样。可以点击卡片，左边是思考过程，右边是生成出来的文稿。
+展示处理过程/进度条。【效果不好，不做】
+
+
+
+会议纪要页面还有什么整体布局可优化的方向吗？能给出一些图片或网站示例吗
+--------------------------------------------------------------------------------------------------------
+
+
+python app_main.py 只启动了 FastAPI（接 HTTP 请求），并不会处理后台任务。真正干活的是 Celery worker，它是另一个独立进程，要单独跑。
+
+解决：再开一个窗口启动 Celery worker
+新开一个 PowerShell 窗口，按下面操作（不要关闭已经在跑的后端窗口和前端窗口）：
+
+cd E:\meeting_minutes_assistant\backend\app
+.\.venv\Scripts\Activate.ps1
+celery -A core.celery_app worker --loglevel=info --pool=solo
+
+--------------------------
+service 模块找不到——celery_app.py 里虽然有把 backend/app 加到 sys.path 的代码，但在 worker 启动的某个阶段没生效。最直接的修复：启动前显式设置 PYTHONPATH。
+
+在那个 PowerShell 窗口里执行：
+
+$env:PYTHONPATH = "E:\meeting_minutes_assistant\backend\app"
+celery -A core.celery_app worker --loglevel=info --pool=solo
+$env:PYTHONPATH 是 PowerShell 设置环境变量的语法，告诉 Python 在导入模块时也去这个目录找。这样 service.meeting 就能被找到了。
+
+注意$env:PYTHONPATH 只在当前 PowerShell 窗口生效，关了就没了。所以以后每次新开窗口启动 worker 都要先跑一次这条 export 命令。
+
+如果你嫌每次手动设烦，可以写个一键启动脚本（以后再说，先把任务跑通要紧）。

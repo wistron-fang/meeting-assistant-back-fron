@@ -1,0 +1,550 @@
+/**
+ * Copyright © 2026 深圳市深维智见教育科技有限公司 版权所有
+ * 未经授权，禁止转售或仿制。
+ *
+ * 会议纪要整理（卡片化扁平布局）
+ *   - 顶部统计条 → 任务卡内嵌可点击 chip 筛选
+ *   - 左列新建任务 sticky
+ *   - 输入方式 Tabs → Segmented
+ *   - 任务卡网格化 + 左侧彩色状态条
+ */
+
+/* ===== Design tokens ===== */
+$primary: #1677ff;
+$primary-deep: #0b1d4a;
+$primary-soft: #e8f1ff;
+$success: #52c41a;
+$success-soft: #f6ffed;
+$error: #ff4d4f;
+$error-soft: #fff1f0;
+$warning: #faad14;
+$bg: #f4f6fa;
+$card: #ffffff;
+$border: #e6e9ef;
+$text-1: #0f1729;
+$text-2: #475569;
+$text-3: #8896a9;
+$radius: 8px;
+$radius-lg: 12px;
+$shadow-card: 0 1px 2px rgba(15, 23, 41, 0.04), 0 1px 6px rgba(15, 23, 41, 0.06);
+$shadow-hover: 0 6px 24px rgba(22, 119, 255, 0.16), 0 0 0 1px rgba(22, 119, 255, 0.08);
+
+/* ===== 页面容器 ===== */
+.meetingPage {
+  padding: 12px 48px 56px 4px;
+  max-width: 1400px;
+  margin: 0 auto 0 0;
+  width: 100%;
+  font-family: 'Microsoft YaHei', '微软雅黑', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: $text-1;
+}
+
+/* ===== 页头：复用首页 hero 卡的深蓝渐变 + 装饰，padding 收紧不喧宾夺主 ===== */
+.header {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 4px;
+  padding: 24px 32px;
+  border-radius: $radius-lg;
+  background: linear-gradient(120deg, #0b1d4a 0%, #1e40af 50%, #3b82f6 100%);
+  box-shadow: 0 12px 32px rgba(11, 29, 74, 0.28);
+
+  // 装饰：右上柔光 + 左下柔光 + 隐约网格（与首页 heroCard 同款）
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 88% 18%, rgba(96, 165, 250, 0.35), transparent 45%),
+      radial-gradient(circle at 10% 110%, rgba(255, 255, 255, 0.10), transparent 45%),
+      linear-gradient(transparent 95%, rgba(255, 255, 255, 0.06) 95%) 0 0 / 100% 28px,
+      linear-gradient(90deg, transparent 95%, rgba(255, 255, 255, 0.06) 95%) 0 0 / 28px 100%;
+    pointer-events: none;
+  }
+
+  h2 {
+    position: relative;
+    z-index: 1;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 6px;
+    letter-spacing: -0.2px;
+  }
+}
+
+.subtitle {
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ===== 主体两列 Row ===== */
+.mainRow {
+  margin: 8px 0 0 -8px !important;
+}
+
+/* ===== 公共卡片头部 ===== */
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: $text-1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cardTitleIcon {
+  color: $primary;
+}
+
+.titleIcon {
+  color: $text-3;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.searchIcon {
+  color: $text-3;
+}
+
+.searchInput {
+  width: 200px;
+}
+
+/* ===== 左列：新建任务卡（普通卡片，不再 sticky） ===== */
+.stickyWrap {
+  /* 保留 class 名以避免 tsx 改名，但不再有 sticky 行为 */
+}
+
+.newTaskCard {
+  border-radius: $radius-lg;
+  background: $card;
+  box-shadow: $shadow-card;
+
+  :global(.ant-card-head) {
+    border-bottom: 1px solid $border;
+    padding: 0 20px;
+    min-height: 56px;
+  }
+
+  :global(.ant-card-body) {
+    padding: 16px 20px 20px;
+  }
+}
+
+.modeSwitch {
+  margin-bottom: 14px;
+
+  :global(.ant-segmented-item-label) {
+    font-size: 13px;
+  }
+}
+
+.inputArea {
+  margin-bottom: 4px;
+}
+
+.pasteArea {
+  border-radius: $radius !important;
+  resize: none;
+  font-size: 13px;
+  background: #fafbfc !important;
+
+  &:focus {
+    background: #fff !important;
+  }
+}
+
+.dragger {
+  border-radius: $radius !important;
+  background: #fafbfc !important;
+  border-color: $border !important;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: $primary !important;
+    background: $primary-soft !important;
+  }
+
+  :global(.ant-upload-drag-container) {
+    padding: 20px 0;
+  }
+}
+
+.draggerIcon {
+  font-size: 36px;
+  color: $primary;
+  margin: 0 0 8px;
+}
+
+.draggerHint {
+  font-size: 12px;
+  color: $text-3;
+  margin: 4px 8px 0;
+  line-height: 1.5;
+}
+
+.sampleBtn {
+  padding: 0 !important;
+  height: auto !important;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.formField {
+  margin-top: 16px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: $text-1;
+  margin-bottom: 6px;
+}
+
+.submitBtn {
+  margin-top: 18px;
+  font-weight: 600;
+}
+
+/* ===== 右列：任务列表卡 ===== */
+.tasksCard {
+  border-radius: $radius-lg;
+  background: $card;
+  box-shadow: $shadow-card;
+  // 拉伸到与左侧"新建任务"列等高（依赖 antd Row flex 默认 align-items: stretch）
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-left: -8px;
+
+  :global(.ant-card-head) {
+    border-bottom: 1px solid $border;
+    padding: 0;
+    min-height: auto;
+  }
+
+  :global(.ant-card-head-title) {
+    padding: 0;
+  }
+
+  :global(.ant-card-body) {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.tasksHead {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 20px;
+}
+
+.tasksTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ===== 状态筛选 chips ===== */
+.filterChips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: $bg;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+
+  &:hover {
+    background: #ebedf0;
+  }
+}
+
+.chipActive {
+  background: $primary-soft !important;
+  border-color: rgba(22, 119, 255, 0.3) !important;
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.08);
+}
+
+.chipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chipLabel {
+  font-size: 13px;
+  color: $text-1;
+  font-weight: 500;
+}
+
+.chipActive .chipLabel {
+  color: $primary;
+}
+
+.chipCount {
+  font-size: 12px;
+  color: $text-3;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.chipActive .chipCount {
+  color: $primary;
+  background: #fff;
+}
+
+/* ===== 空状态 ===== */
+.empty {
+  padding: 48px 0;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  color: $text-3;
+}
+
+.emptyText {
+  font-size: 14px;
+  color: $text-2;
+  margin-top: 12px;
+}
+
+.emptyHint {
+  font-size: 12px;
+  color: $text-3;
+  margin-top: 6px;
+}
+
+/* ===== 单条任务卡 ===== */
+.taskCard {
+  position: relative;
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: 16px 18px;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  cursor: pointer;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    border-radius: 2px;
+    background: $text-3;
+  }
+
+  &:hover {
+    border-color: $primary;
+    box-shadow: $shadow-hover;
+    transform: translateY(-1px);
+  }
+}
+
+.taskCard_pending::before { background: $text-3; }
+.taskCard_running::before { background: $primary; }
+.taskCard_done::before { background: $success; }
+.taskCard_failed::before { background: $error; }
+
+.taskCard_selected {
+  border-color: $primary !important;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.18);
+}
+
+.taskHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.taskTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-1;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.statusTag {
+  flex-shrink: 0;
+  font-size: 11px !important;
+  padding: 0 8px !important;
+  height: 22px !important;
+  line-height: 20px !important;
+  border-radius: 4px !important;
+  margin: 0 !important;
+}
+
+.taskMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: $text-3;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// 过期提示：橙色，弱化背景，与其他 meta 区分
+.expireHint {
+  color: $warning;
+  font-weight: 500;
+}
+
+.stageText {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: $primary;
+  flex-wrap: wrap;
+}
+
+.cardError {
+  font-size: 12px;
+  color: $error;
+  background: $error-soft;
+  padding: 6px 8px;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.taskDuration {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 0 0;
+}
+
+.durationLabel {
+  color: $text-3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.durationValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.taskFooter {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed $border;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.formatList {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.formatBtn {
+  font-size: 12px !important;
+  color: $text-2 !important;
+  padding: 0 8px !important;
+
+  &:hover:not(:disabled) {
+    color: $primary !important;
+    background: $primary-soft !important;
+  }
+}
+
+.deleteBtn {
+  color: $text-3 !important;
+
+  &:hover {
+    color: $error !important;
+    background: $error-soft !important;
+  }
+}
+
+/* ===== 分页器（卡片内，距离最后一行卡片固定 28px） ===== */
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 45px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 992px) {
+  .meetingPage {
+    padding: 20px 16px;
+  }
+
+  .stickyWrap {
+    position: static;
+  }
+
+  .searchInput {
+    width: 100%;
+    min-width: 160px;
+  }
+}

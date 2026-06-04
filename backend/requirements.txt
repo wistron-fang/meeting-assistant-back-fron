@@ -1,0 +1,111 @@
+# =====================================================================
+# meeting_minutes_assistant - 后端依赖
+# =====================================================================
+# 编辑历史：
+# - 2026-05-02: 合并 FinInsRAG 知识库相关依赖（kb_chat 模块）
+# 注意：
+# - 标记 [DEPRECATED] 的包计划在阶段三移除（删 Milvus / DocMind 容器后）
+# - 标记 [KB_CHAT] 的包是 FinInsRAG 迁移引入的
+# =====================================================================
+
+# ---------- Web Framework ----------
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
+
+# ---------- Database ----------
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+alembic>=1.12.0
+
+# ---------- Redis ----------
+redis>=5.0.0
+
+# ---------- Authentication ----------
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+pydantic[email]>=2.5.0
+bcrypt
+# [KB_CHAT] FinInsRAG 自带 fastapi-jwt 鉴权，已替换为现有 auth，不再需要
+
+# ---------- AI / LLM ----------
+openai>=1.0.0
+tiktoken>=0.5.0
+dashscope                                # [KB_CHAT] DashScope SDK
+llama-index-core                         # [KB_CHAT] llama-index 模块化版本
+llama-index-postprocessor-dashscope-rerank>=0.1.0
+# 注：FinInsRAG requirements.txt 用的是 -custom 后缀的 fork，本项目用官方版即可
+langgraph>=0.2.0,<0.3.0
+langchain>=0.2.0,<0.3.0
+langchain-openai>=0.1.7,<0.2.0
+
+# ---------- Search / Vector Store ----------
+elasticsearch>=8.11.0,<9.0.0             # [KB_CHAT] 与 ES 容器版本对齐
+elasticsearch-dsl>=8.11.0,<9.0.0         # [KB_CHAT]
+pymilvus>=2.3.0                          # [DEPRECATED] 阶段三删除（Milvus 容器一起下线）
+
+# ---------- NLP ----------
+nltk>=3.8.0
+jieba>=0.42.0
+datrie>=0.8.2,<0.9                       # [KB_CHAT] 加载 huqie.txt.trie 110 万词典
+hanziconv                                # [KB_CHAT] 简繁体转换
+beartype                                 # [KB_CHAT] 类型校验
+
+# ---------- HTTP Client ----------
+httpx>=0.25.0
+aiohttp>=3.9.0
+requests>=2.31.0
+
+# ---------- Web Scraping & Text Extraction ----------
+beautifulsoup4>=4.12.0
+trafilatura>=1.6.0
+lxml>=4.9.0
+readability-lxml                         # [KB_CHAT] HTML 正文抽取
+lxml_html_clean                          # [KB_CHAT] HTML 清洗
+html-text                                # [KB_CHAT] HTML 转纯文本
+
+# ---------- Document Parsing (deepdoc) ----------
+PyPDF2>=3.0.0                            # 兼容保留（pypdf 是新版继任）
+pypdf                                    # [KB_CHAT] PDF 解析
+pdfplumber                               # [KB_CHAT] PDF 文字/表格抽取
+python-docx>=1.0.0
+python-pptx                              # [KB_CHAT] PPTX 解析
+openpyxl>=3.1.0
+markdown>=3.5.0
+chardet                                  # [KB_CHAT] 编码检测
+xxhash                                   # [KB_CHAT] 快速哈希
+tika                                     # [KB_CHAT] Apache Tika 客户端（兜底解析，需 Java）
+alibabacloud_docmind_api20220711>=1.0.0  # [DEPRECATED] 阶段三移除（被 deepdoc 替代）
+
+# ---------- OCR / 版面识别 (deepdoc 视觉链) ----------
+opencv-python                            # [KB_CHAT] 图像处理
+onnxruntime                              # [KB_CHAT] ONNX 推理（layout/det/rec/tsr 模型）
+shapely                                  # [KB_CHAT] 几何运算
+pyclipper                                # [KB_CHAT] 多边形裁剪
+xgboost-cpu>=3.0,<4.0                    # [KB_CHAT] 方向判别（updown_concat_xgb.ubj）
+huggingface_hub                          # [KB_CHAT] 模型下载客户端
+
+# ---------- Data Processing ----------
+numpy>=1.24.0                            # 注：xgboost-cpu 3.x 升级到 numpy 2.x，langchain 0.2 报警告但实际可用
+pandas>=2.0.0
+
+# ---------- Visualization ----------
+matplotlib>=3.7.0
+seaborn>=0.12.0
+wordcloud>=1.9.0
+
+# ---------- Utils ----------
+pyyaml>=6.0.0
+python-dateutil>=2.8.0
+colorlog                                 # [KB_CHAT] 彩色日志（FinInsRAG 用，可选）
+
+# ---------- Meeting / Reports ----------
+celery>=5.3.0
+flower>=2.0.0
+reportlab>=4.0.0
+fonttools>=4.40.0
+
+# ---------- 语音识别 (ASR) ----------
+aliyun-python-sdk-core>=2.13.0           # 极速版 NLS Flash Recognizer
+oss2>=2.18.0                              # 普通版 Qwen-ASR 通过 OSS 中转大文件

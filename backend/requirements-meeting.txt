@@ -1,0 +1,63 @@
+# =====================================================================
+# 会议纪要功能 - 最小依赖子集
+# =====================================================================
+# 用途：只跑「会议纪要」功能（API + Celery worker + LLM 流水线 + ASR + PDF/DOCX 渲染）
+#       时用这个，而不是全量 requirements.txt。
+#
+# 为什么单独拉一份：
+#   全量 requirements.txt 在 2026-05-02 合并了另一个功能 FinInsRAG/kb_chat 的依赖
+#   （标 [KB_CHAT] / [DEPRECATED]），里面 opencv / onnxruntime / xgboost / llama-index /
+#   pymilvus / elasticsearch / tika(需 Java) 等重包**会议代码一个都没 import**，
+#   装上只是拖慢 + 占盘 + 在老系统上可能编译失败。
+#
+# 依据：grep 过 service/meeting、router、core 的实际 import，下面是会议链路真正用到的。
+# 兜底：若运行时报 ModuleNotFoundError，单独 pip install 缺的包即可。
+#
+# 安装：
+#   python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ -r requirements-meeting.txt
+# =====================================================================
+
+# ---------- Web ----------
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
+
+# ---------- Database ----------
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+alembic>=1.12.0
+
+# ---------- Redis / Celery ----------
+redis>=5.0.0
+celery>=5.3.0
+
+# ---------- Auth ----------
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+pydantic[email]>=2.5.0
+bcrypt
+
+# ---------- LLM 流水线 ----------
+openai>=1.0.0
+tiktoken>=0.5.0
+dashscope
+langgraph>=0.2.0,<0.3.0
+langchain>=0.2.0,<0.3.0
+langchain-openai>=0.1.7,<0.2.0
+numpy>=1.24.0
+pyyaml>=6.0.0
+
+# ---------- 文档渲染 ----------
+python-docx>=1.0.0
+reportlab>=4.0.0
+fonttools>=4.40.0
+markdown>=3.5.0
+
+# ---------- 语音识别 (ASR) ----------
+aliyun-python-sdk-core>=2.13.0
+oss2>=2.18.0
+
+# ---------- HTTP（多为 openai/langchain 的传递依赖，列出保险）----------
+httpx>=0.25.0
+requests>=2.31.0

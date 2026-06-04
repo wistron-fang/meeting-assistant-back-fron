@@ -1,0 +1,78 @@
+/**
+ * Copyright © 2026 深圳市深维智见教育科技有限公司 版权所有
+ * 未经授权，禁止转售或仿制。
+ */
+
+.com-markdown {
+  > :first-child {
+    margin-top: 0;
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  // 引用 chip：##N$$ 经 marked 扩展渲染为 [N]
+  .reference-token {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin: 0 2px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    color: #1677ff;
+    background: #e6f4ff;
+    border: 1px solid #91caff;
+    border-radius: 9px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+    vertical-align: 2px;
+
+    &:hover {
+      background: #1677ff;
+      color: #fff;
+      border-color: #1677ff;
+      transform: translateY(-1px);
+    }
+  }
+
+  pre > code {
+    background-color: white;
+    display: block;
+    padding: 0.5em;
+    -webkit-text-size-adjust: none;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  table {
+    background-color: white;
+    border-collapse: collapse;
+    border-spacing: 0;
+    border-radius: 6px;
+
+    &,
+    td,
+    th {
+      border: 1px solid #ddd;
+    }
+
+    td,
+    th {
+      padding: 8px 12px;
+    }
+  }
+
+  // 图片样式
+  .markdown-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 12px 0;
+  }
+}

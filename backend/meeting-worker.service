@@ -1,0 +1,21 @@
+[Unit]
+Description=Meeting Celery Worker (-c 32, NullPool, embedded beat)
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/meeting/backend/app
+# NullPool：-c 32 prefork 用完即关，避免 32 条 idle 吃光 PG 70 上限。等价于 start.sh worker 行的内联前缀。
+Environment=PYTHONPATH=/opt/meeting/backend/app
+Environment=DB_POOL_MODE=null
+# -B 内嵌 beat：每日跑 cleanup_expired（删 MEETING_RETENTION_DAYS 默认7天前任务+产物）。单机唯一 beat。
+ExecStart=/root/miniconda3/envs/meeting/bin/celery -A core.celery_app.celery_app worker -l info -c 32 -B
+Restart=always
+RestartSec=10
+# 优雅停：给在跑任务（最长40min）一点时间；超时仍会强杀，task_acks_late=True 会重新投递不丢。
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

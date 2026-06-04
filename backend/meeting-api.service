@@ -1,0 +1,19 @@
+[Unit]
+Description=Meeting Minutes API (uvicorn, 4 workers)
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/meeting/backend/app
+# 连接池：API 小池抗轮询（PG max_connections=70，预算紧）。等价于 start.sh 里 uvicorn 的内联前缀。
+Environment=PYTHONPATH=/opt/meeting/backend/app
+Environment=DB_POOL_SIZE=3
+Environment=DB_MAX_OVERFLOW=3
+ExecStart=/root/miniconda3/envs/meeting/bin/uvicorn app_main:app --host 0.0.0.0 --port 8100 --workers 4
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
