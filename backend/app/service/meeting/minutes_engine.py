@@ -4047,12 +4047,8 @@ def build_meeting_minutes_workflow():
     wf.add_node("summarize_chunks", nodes["summarize_chunks"])
     wf.add_node("analyze_speakers", nodes["analyze_speakers"])
     wf.add_node("segment_topics", nodes["segment_topics"])
-    # 步骤5/7（提取详细内容）已禁用：保留函数定义，但不接入工作流
-    def _skip_extract_content(state: MeetingState) -> MeetingState:
-        state["content_sections"] = {}
-        state["current_step"] = "extract_content_skipped"
-        return state
-    wf.add_node("extract_content", _skip_extract_content)
+    # 步骤5/7（提取详细内容）：已重新启用，接回真实提取节点
+    wf.add_node("extract_content", nodes["extract_content"])
     wf.add_node("write_document", nodes["write_document"])
     wf.add_node("enhance_format", nodes["enhance_format"])
     wf.add_node("quality_check", nodes["quality_check"])
