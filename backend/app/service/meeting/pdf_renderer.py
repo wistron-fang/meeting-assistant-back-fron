@@ -59,12 +59,33 @@ FONT_NAME = "ZHFont"
 FONT_BOLD = "ZHFont"  # 很多中文字体没有独立 Bold，复用同一个
 
 
-def _find_font_source() -> Optional[str]:
-    """查找系统中文字体。
+def _is_glyf_font(path: str) -> bool:
+    """该字体是否为 TrueType(glyf)轮廓。
 
-    顺序：① 各平台常见显式路径（含 alinux/RHEL/CentOS/Debian/Ubuntu）；
-    ② 扫描常见字体目录里任意 CJK 字体；③ fc-list 动态查询系统已装中文字体
-    （最通用——只要系统装了任意中文字体就能用，无需软链到写死路径）。
+    reportlab 的 TTFont 只能渲染 glyf 轮廓；CFF / OpenType-PS 轮廓（如 Noto CJK、
+    思源黑体）会报 'postscript outlines are not supported' 并回退，导致中文显示为方块。
+    所以选字体前先用 fonttools 验明正身，CFF 字体一律跳过（.ttc 取第 0 子字体判断）。
+    """
+    try:
+        from fontTools.ttLib import TTFont as FTFont
+        f = FTFont(path, fontNumber=0) if path.lower().endswith(".ttc") else FTFont(path)
+        try:
+            return "glyf" in f
+        finally:
+            f.close()
+    except Exception:
+        return False
+
+
+def _find_font_source() -> Optional[str]:
+    """查找系统中【可用】的中文字体——必须是 TrueType(glyf) 轮廓。
+
+    顺序：① 各平台显式路径（含 alinux/RHEL/CentOS/Debian/Ubuntu）；
+    ② 扫描常见字体目录；③ fc-list 动态查询。三路候选汇总后逐个用 _is_glyf_font 校验，
+    返回第一个 glyf 字体。
+    ⚠ Noto CJK / 思源 等 CFF 字体会被过滤掉（reportlab 渲染不了），所以系统需装一款
+    TrueType 中文字体（如 wqy-zenhei / wqy-microhei）才会命中；都没有时返回 None，
+    由 register_font 回退到内置 CID 字体 STSong-Light（保证中文不变方块）。
     """
     import glob
     import subprocess
@@ -85,30 +106,22 @@ def _find_font_source() -> Optional[str]:
             "/Library/Fonts/Songti.ttc",
         ]
     else:
+        # TrueType 中文字体优先；Noto/思源是 CFF，留在 glob/fc-list 里也会被 glyf 校验过滤掉
         candidates = [
-            # Debian / Ubuntu
             "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
             "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-            # RHEL / Alibaba Cloud Linux / CentOS / Fedora
             "/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc",
             "/usr/share/fonts/wqy-microhei/wqy-microhei.ttc",
-            "/usr/share/fonts/google-noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/google-noto-sans-cjk-fonts/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/google-noto-sans-cjk-vf-fonts/NotoSansCJK-VF.ttc",
+            "/usr/share/fonts/truetype/arphic/uming.ttc",
+            "/usr/share/fonts/truetype/arphic/ukai.ttc",
+            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
         ]
 
-    for p in candidates:
-        if os.path.exists(p):
-            return p
-
-    # ② 扫描常见字体目录，按文件名匹配任意 CJK 字体（递归）
+    # ② 扫描常见字体目录补充候选（TrueType 名靠前）
     if system not in ("Windows", "Darwin"):
         name_pats = [
-            "wqy*", "*NotoSansCJK*", "*NotoSerifCJK*", "*NotoSansSC*", "*NotoSansMonoCJK*",
-            "*SourceHanSans*", "*SourceHanSerif*", "*uming*", "*ukai*", "*droidsansfallback*",
+            "wqy*", "*uming*", "*ukai*", "*[Dd]roid[Ss]ans[Ff]allback*", "*WenQuanYi*",
+            "*NotoSansCJK*", "*NotoSerifCJK*", "*SourceHanSans*", "*SourceHanSerif*",
         ]
         font_dirs = [
             "/usr/share/fonts", "/usr/local/share/fonts",
@@ -118,31 +131,32 @@ def _find_font_source() -> Optional[str]:
             if not os.path.isdir(d):
                 continue
             for pat in name_pats:
-                for ext in ("ttf", "otf", "ttc"):  # ttf/otf 优先，reportlab 直接可用
-                    hits = glob.glob(os.path.join(d, "**", f"{pat}.{ext}"), recursive=True)
-                    if hits:
-                        return sorted(hits)[0]
+                for ext in ("ttf", "ttc", "otf"):
+                    candidates += sorted(
+                        glob.glob(os.path.join(d, "**", f"{pat}.{ext}"), recursive=True)
+                    )
 
-    # ③ fc-list 动态查询：系统装了任意中文字体即可命中（最通用）
+    # ③ fc-list 动态查询，把系统所有中文字体也纳入候选
     try:
         out = subprocess.run(
             ["fc-list", ":lang=zh", "file"],
             capture_output=True, text=True, timeout=10,
         ).stdout
-        zh_fonts = []
         for line in out.splitlines():
             path = line.split(":")[0].strip()
-            if path and path.lower().endswith((".ttf", ".otf", ".ttc")) and os.path.exists(path):
-                zh_fonts.append(path)
-        # 优先非 .ttc（省去 fonttools 抽取这步），否则取第一个
-        for path in zh_fonts:
-            if not path.lower().endswith(".ttc"):
-                return path
-        if zh_fonts:
-            return zh_fonts[0]
+            if path.lower().endswith((".ttf", ".ttc", ".otf")):
+                candidates.append(path)
     except Exception:
         pass
 
+    # 逐个验证：存在 + 是 glyf(TrueType) 才可用；CFF 一律跳过
+    seen = set()
+    for p in candidates:
+        if p in seen:
+            continue
+        seen.add(p)
+        if os.path.exists(p) and _is_glyf_font(p):
+            return p
     return None
 
 
@@ -189,12 +203,28 @@ def register_font():
             try:
                 pdfmetrics.registerFont(TTFont(FONT_NAME, ttf))
                 _FONT_REGISTERED = True
-                print(f"  字体: {os.path.basename(source)}")
+                print(f"  字体(嵌入): {os.path.basename(source)}")
                 return
             except Exception as e:
                 print(f"  ⚠ 字体注册失败: {e}")
 
-    print("  ⚠ 未找到中文字体，PDF中文可能显示异常")
+    # 回退①：reportlab 内置中文 CID 字体 STSong-Light（无需任何字体文件，
+    # 不嵌入字形，由阅读器用 Adobe-GB1 替代字体显示）——保证中文不再是方块。
+    # 想要“嵌入字体”（更稳、可打印/任意阅读器）请在系统装一款 TrueType 中文字体，
+    # 如：dnf install -y wqy-zenhei-fonts ，代码会自动优先用它。
+    try:
+        from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+        pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+        FONT_NAME = "STSong-Light"
+        FONT_BOLD = "STSong-Light"
+        _FONT_REGISTERED = True
+        print("  字体(CID回退): STSong-Light（未装 TrueType 中文字体，已用内置CID；建议装 wqy-zenhei）")
+        return
+    except Exception as e:
+        print(f"  ⚠ CID 字体回退失败: {e}")
+
+    # 回退②：最后兜底 Helvetica（中文会缺字，仅保证不崩）
+    print("  ⚠ 未找到任何中文字体，PDF中文可能显示异常")
     FONT_NAME = "Helvetica"
     FONT_BOLD = "Helvetica-Bold"
     _FONT_REGISTERED = True
