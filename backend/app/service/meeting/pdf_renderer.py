@@ -60,8 +60,17 @@ FONT_BOLD = "ZHFont"  # 很多中文字体没有独立 Bold，复用同一个
 
 
 def _find_font_source() -> Optional[str]:
-    """查找系统中文字体"""
+    """查找系统中文字体。
+
+    顺序：① 各平台常见显式路径（含 alinux/RHEL/CentOS/Debian/Ubuntu）；
+    ② 扫描常见字体目录里任意 CJK 字体；③ fc-list 动态查询系统已装中文字体
+    （最通用——只要系统装了任意中文字体就能用，无需软链到写死路径）。
+    """
+    import glob
+    import subprocess
+
     system = platform.system()
+    candidates: List[str] = []
     if system == "Windows":
         fd = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
         candidates = [
@@ -77,13 +86,63 @@ def _find_font_source() -> Optional[str]:
         ]
     else:
         candidates = [
+            # Debian / Ubuntu
             "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
             "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
             "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+            # RHEL / Alibaba Cloud Linux / CentOS / Fedora
+            "/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc",
+            "/usr/share/fonts/wqy-microhei/wqy-microhei.ttc",
+            "/usr/share/fonts/google-noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/google-noto-sans-cjk-fonts/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/google-noto-sans-cjk-vf-fonts/NotoSansCJK-VF.ttc",
         ]
+
     for p in candidates:
         if os.path.exists(p):
             return p
+
+    # ② 扫描常见字体目录，按文件名匹配任意 CJK 字体（递归）
+    if system not in ("Windows", "Darwin"):
+        name_pats = [
+            "wqy*", "*NotoSansCJK*", "*NotoSerifCJK*", "*NotoSansSC*", "*NotoSansMonoCJK*",
+            "*SourceHanSans*", "*SourceHanSerif*", "*uming*", "*ukai*", "*droidsansfallback*",
+        ]
+        font_dirs = [
+            "/usr/share/fonts", "/usr/local/share/fonts",
+            os.path.expanduser("~/.fonts"), os.path.expanduser("~/.local/share/fonts"),
+        ]
+        for d in font_dirs:
+            if not os.path.isdir(d):
+                continue
+            for pat in name_pats:
+                for ext in ("ttf", "otf", "ttc"):  # ttf/otf 优先，reportlab 直接可用
+                    hits = glob.glob(os.path.join(d, "**", f"{pat}.{ext}"), recursive=True)
+                    if hits:
+                        return sorted(hits)[0]
+
+    # ③ fc-list 动态查询：系统装了任意中文字体即可命中（最通用）
+    try:
+        out = subprocess.run(
+            ["fc-list", ":lang=zh", "file"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout
+        zh_fonts = []
+        for line in out.splitlines():
+            path = line.split(":")[0].strip()
+            if path and path.lower().endswith((".ttf", ".otf", ".ttc")) and os.path.exists(path):
+                zh_fonts.append(path)
+        # 优先非 .ttc（省去 fonttools 抽取这步），否则取第一个
+        for path in zh_fonts:
+            if not path.lower().endswith(".ttc"):
+                return path
+        if zh_fonts:
+            return zh_fonts[0]
+    except Exception:
+        pass
+
     return None
 
 
